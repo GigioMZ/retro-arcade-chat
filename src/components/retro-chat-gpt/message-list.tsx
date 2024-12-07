@@ -6,17 +6,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 import { type Message } from "./types";
 
-
 interface MessageListProps {
   messages: Message[];
-  isLoading?: boolean;
+  isSubmitting?: boolean;
 }
 
-export function MessageList({ messages, isLoading = false }: MessageListProps) {
+export function MessageList({ messages, isSubmitting = false }: MessageListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const isStreamingAssistantMessage =
     messages.length > 0 && messages[messages.length - 1].role === "assistant";
-  const shouldShowLoadingIndicator = isLoading && !isStreamingAssistantMessage;
+  const shouldShowLoadingIndicator = isSubmitting && !isStreamingAssistantMessage;
 
   useEffect(() => {
     const scrollToBottom = () => {
@@ -40,7 +39,7 @@ export function MessageList({ messages, isLoading = false }: MessageListProps) {
     <div className="flex-1 min-h-0" ref={containerRef}>
       <div className="relative bg-black py-1 sm:py-2 h-full">
         <div className="absolute inset-0 star-field"></div>
-        <div className="top-0 left-0 absolute text-purple-500 blink">►</div>
+        {!messages?.length && <div className="top-0 left-0 absolute text-purple-500 blink">►</div>}
         <ScrollArea className="relative z-10 h-full">
           <div className="px-4">
             {messages.map((message, index) => (

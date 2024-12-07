@@ -1,35 +1,53 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { ChatHeader } from "@/components/retro-chat-gpt/chat-header";
 import { ChatInput } from "@/components/retro-chat-gpt/chat-input";
 import { MessageList } from "@/components/retro-chat-gpt/message-list";
 import { type Message } from "@/components/retro-chat-gpt/types";
 import { streamChatCompletion } from "@/app/actions";
-import { handleStreamMessage, updateMessagesWithResponse, generateImageUrl } from "./utils";
+import {
+  handleStreamMessage,
+  updateMessagesWithResponse,
+  generateImageUrl,
+} from "@/components/retro-chat-gpt/utils";
+
+const promptSchema = z.object({
+  userPrompt: z.string().min(1, "Please enter a message"),
+});
+
+type PromptForm = z.infer<typeof promptSchema>;
 
 export function RetroChatGPT() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
   const [score, setScore] = useState(25000);
   const [credits, setCredits] = useState(99);
   const [isImageMode, setIsImageMode] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const isStreamingRef = useRef(false);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const form = useForm<PromptForm>({
+    resolver: zodResolver(promptSchema),
+    defaultValues: {
+      userPrompt: "",
+    },
+  });
+
+  const isSubmitting = form.formState.isSubmitting;
+
+  const handleSend = async (userPrompt: string) => {
+    if (!userPrompt.trim() || isSubmitting) return;
 
     try {
-      setIsLoading(true);
       isStreamingRef.current = true;
 
       const newMessage: Message = {
         role: "user",
-        content: input,
+        content: userPrompt,
       };
       setMessages((prev) => [...prev, newMessage]);
-      setInput("");
       setScore((prev) => prev + 1000);
 
       const result = await streamChatCompletion({
@@ -38,6 +56,8 @@ export function RetroChatGPT() {
           content: msg.content,
         })),
       });
+
+      console.log("result", result);
 
       if (!result.success) throw new Error(result.error);
       if (!result.data) throw new Error("No stream returned");
@@ -57,50 +77,39 @@ export function RetroChatGPT() {
         )
       );
     } finally {
-      setIsLoading(false);
       isStreamingRef.current = false;
     }
   };
 
-  const handleImageGenerate = () => {
-    const generatedImageUrl = generateImageUrl(input);
+  const handleImageGenerate = (userPrompt: string) => {
+    const generatedImageUrl = generateImageUrl(userPrompt);
     const newMessage: Message = {
       role: "assistant",
-      content: `Here's a generated image based on: ${input}`,
+      content: `Here's a generated image based on: ${userPrompt}`,
       image: generatedImageUrl,
     };
     setMessages((prev) => [...prev, newMessage]);
     setScore((prev) => prev + 500);
-    setInput("");
   };
 
-  const handleKeyDown = async (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      if (isImageMode) {
-        handleImageGenerate();
-      } else {
-        await handleSend();
-      }
-    }
-  };
-
-  const handleSubmit = async () => {
-    if (!input.trim()) {
-      return;
-    }
+  const onSubmit = async (data: PromptForm) => {
+    const userPrompt = data.userPrompt;
+    form.setValue("userPrompt", "");
 
     try {
       if (isImageMode) {
-        await handleImageGenerate();
+        await handleImageGenerate(userPrompt);
       } else {
-        await handleSend();
+        await handleSend(userPrompt);
       }
       setCredits((prev) => prev - 1);
+      form.reset();
     } catch (error) {
-      console.error("Error in handleSubmit:", error);
+      console.error("Error in onSubmit:", error);
     }
   };
+
+  console.log("ttt", isSubmitting);
 
   return (
     <main className="flex flex-col bg-black px-2 h-screen text-white">
@@ -108,15 +117,12 @@ export function RetroChatGPT() {
 
       <div className="flex flex-1 justify-center px-1 sm:px-2 min-h-0">
         <div className="flex flex-col w-full max-w-4xl h-full">
-          <MessageList messages={messages} isLoading={isLoading} />
+          <MessageList messages={messages} isSubmitting={isSubmitting} />
           <ChatInput
-            input={input}
+            form={form}
             credits={credits}
             isImageMode={isImageMode}
-            isLoading={isLoading}
-            onInputChange={setInput}
-            onKeyDown={handleKeyDown}
-            onSend={handleSubmit}
+            onSubmit={form.handleSubmit(onSubmit)}
             onToggleMode={() => setIsImageMode(!isImageMode)}
           />
         </div>

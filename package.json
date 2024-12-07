@@ -10,6 +10,7 @@
     "clean:cache": "rm -rf .next && rm -rf node_modules/.cache"
   },
   "dependencies": {
+    "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-scroll-area": "^1.2.1",
     "@radix-ui/react-slot": "^1.1.0",
     "ai": "^4.0.12",
@@ -22,6 +23,7 @@
     "openai": "^4.76.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-hook-form": "^7.54.0",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.23.8"
