@@ -1,14 +1,15 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+
+import { streamChatCompletion, generateImage } from "@/app/actions";
 import { ChatHeader } from "@/components/retro-chat-gpt/chat-header";
 import { ChatInput } from "@/components/retro-chat-gpt/chat-input";
 import { MessageList } from "@/components/retro-chat-gpt/message-list";
 import { type Message } from "@/components/retro-chat-gpt/types";
-import { streamChatCompletion, generateImage } from "@/app/actions";
 import { handleStreamMessage, updateMessagesWithResponse } from "@/components/retro-chat-gpt/utils";
 
 const promptSchema = z.object({
@@ -34,7 +35,7 @@ export function RetroChatGPT() {
   const isSubmitting = form.formState.isSubmitting;
 
   const handleChat = async (userPrompt: string) => {
-    if (!userPrompt.trim() || isSubmitting) return;
+    if (!userPrompt.trim() || isSubmitting) {return;}
 
     try {
       isStreamingRef.current = true;
@@ -57,8 +58,8 @@ export function RetroChatGPT() {
           })),
       });
 
-      if (!result.success) throw new Error(result.error);
-      if (!result.data) throw new Error("No stream returned");
+      if (!result.success) {throw new Error(result.error);}
+      if (!result.data) {throw new Error("No stream returned");}
 
       await handleStreamMessage({
         stream: result.data,
