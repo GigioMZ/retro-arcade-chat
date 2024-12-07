@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 
-import { openai } from "@/lib/heurist";
+import { heurist, openai } from "@/lib/heurist";
 
 const chatCompletionSchema = z.object({
   messages: z.array(
@@ -41,4 +41,13 @@ export async function streamChatCompletion(input: z.infer<typeof chatCompletionS
       error: "Failed to generate response. Please try again.",
     };
   }
+}
+
+export async function generateImage(prompt: string) {
+  const response = await heurist.images.generate({
+    model: "FLUX.1-dev",
+    prompt,
+  });
+
+  return response;
 }

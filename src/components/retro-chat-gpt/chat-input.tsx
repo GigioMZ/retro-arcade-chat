@@ -21,7 +21,6 @@ export function ChatInput({ form, credits, isImageMode, onSubmit, onToggleMode }
     <div className="relative bg-gradient-to-r from-purple-900 to-indigo-900 p-2 sm:p-4 overflow-hidden">
       <div className="absolute inset-0 star-field"></div>
       <div className="relative z-10 space-y-2">
-        <ModeToggle isImageMode={isImageMode} onToggleMode={onToggleMode} />
         <form onSubmit={onSubmit} className="flex flex-col flex-grow items-end gap-2">
           <Textarea
             {...form.register("userPrompt")}
@@ -40,13 +39,16 @@ export function ChatInput({ form, credits, isImageMode, onSubmit, onToggleMode }
               "placeholder-purple-400 retro-caret"
             )}
           />
-          <Button
-            type="submit"
-            disabled={!isValid || isLoading}
-            className="border-4 bg-yellow-300 hover:bg-yellow-400 disabled:opacity-50 p-4 hover:border-t-yellow-500 active:border-t-yellow-700 hover:border-r-yellow-700 active:border-r-yellow-500 border-black hover:border-b-yellow-700 active:border-b-yellow-500 hover:border-l-yellow-500 active:border-l-yellow-700 min-w-[100px] text-black arcade-text"
-          >
-            {isLoading ? "Generating..." : isImageMode ? "Generate" : "Send"}
-          </Button>
+          <div className="flex justify-between items-center w-full">
+            <ModeToggle isImageMode={isImageMode} onToggleMode={onToggleMode} />
+            <Button
+              type="submit"
+              disabled={!isValid || isLoading}
+              className="border-4 bg-yellow-300 hover:bg-yellow-400 disabled:opacity-50 p-4 hover:border-t-yellow-500 active:border-t-yellow-700 hover:border-r-yellow-700 active:border-r-yellow-500 border-black hover:border-b-yellow-700 active:border-b-yellow-500 hover:border-l-yellow-500 active:border-l-yellow-700 min-w-[100px] text-black arcade-text"
+            >
+              {isLoading ? "Generating..." : isImageMode ? "Generate" : "Send"}
+            </Button>
+          </div>
         </form>
         <div className="mt-1 sm:mt-2 text-[10px] text-center text-purple-400 sm:text-xs">
           PRESS ENTER TO SEND • CREDITS: {credits}

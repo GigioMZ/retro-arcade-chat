@@ -1,10 +1,10 @@
 import Image from "next/image";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { type Message } from "@/components/retro-chat-gpt/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-
-import { type Message } from "./types";
+import { cn } from "@/lib/utils";
 
 interface MessageListProps {
   messages: Message[];
@@ -16,6 +16,16 @@ export function MessageList({ messages, isSubmitting = false }: MessageListProps
   const isStreamingAssistantMessage =
     messages.length > 0 && messages[messages.length - 1].role === "assistant";
   const shouldShowLoadingIndicator = isSubmitting && !isStreamingAssistantMessage;
+  const [imageLoadingStates, setImageLoadingStates] = useState<Record<string, boolean>>(() => {
+    const initialStates: Record<string, boolean> = {};
+    messages.forEach((message) => {
+      if (message?.image?.url) {
+        initialStates[message?.image.url] = true;
+      }
+    });
+    return initialStates;
+  });
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const scrollToBottom = () => {
@@ -34,6 +44,24 @@ export function MessageList({ messages, isSubmitting = false }: MessageListProps
     const timeoutId = setTimeout(scrollToBottom, 100);
     return () => clearTimeout(timeoutId);
   }, [messages]);
+
+  const handleImageLoad = (imageUrl: string) => {
+    setImageLoadingStates((prev) => ({
+      ...prev,
+      [imageUrl]: false,
+    }));
+  };
+
+  const handleImageError = (imageUrl: string) => {
+    setImageErrors((prev) => ({
+      ...prev,
+      [imageUrl]: true,
+    }));
+    setImageLoadingStates((prev) => ({
+      ...prev,
+      [imageUrl]: false,
+    }));
+  };
 
   return (
     <div className="flex-1 min-h-0" ref={containerRef}>
@@ -56,15 +84,39 @@ export function MessageList({ messages, isSubmitting = false }: MessageListProps
                       : "bg-indigo-900 bg-opacity-90"
                   }`}
                 >
-                  <p className="text-xs text-yellow-300 sm:text-sm">{message.content}</p>
-                  {message.image && (
-                    <Image
-                      src={message.image}
-                      alt="Generated AI Image"
-                      width={200}
-                      height={200}
-                      className="mt-2 pixel-border rounded w-full sm:w-auto max-w-[200px]"
-                    />
+                  {!!message.content && (
+                    <p className="mb-4 text-xs text-yellow-300 sm:text-sm">{message.content}</p>
+                  )}
+                  {!!message?.image?.url && !imageErrors[message?.image?.url] && (
+                    <div className="relative mx-auto mt-4 w-full max-w-md aspect-square">
+                      <p className="mb-2 text-xs text-yellow-300 sm:text-sm">
+                        {message.image.propmpt}
+                      </p>
+                      {imageLoadingStates[message?.image?.url] && (
+                        <div className="z-10 absolute inset-0">
+                          <Skeleton
+                            className={cn("w-full h-full", "animate-pulse bg-yellow-300/30")}
+                          />
+                        </div>
+                      )}
+                      <div className="relative w-full aspect-square">
+                        <Image
+                          src={message?.image?.url}
+                          alt="Generated image"
+                          fill
+                          className="object-contain"
+                          onError={() => handleImageError(message?.image?.url || "")}
+                          onLoad={() => handleImageLoad(message?.image?.url || "")}
+                          sizes="(max-width: 768px) 100vw, 768px"
+                          priority
+                        />
+                      </div>
+                    </div>
+                  )}
+                  {message?.image?.url && imageErrors[message?.image.url] && (
+                    <div className="p-4 text-center text-red-500">
+                      Failed to load image. The image URL has expired or is unavailable.
+                    </div>
                   )}
                 </div>
               </div>

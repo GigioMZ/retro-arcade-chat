@@ -1,7 +1,7 @@
 import type { ChatCompletionChunk } from "openai/resources/index.mjs";
 import type { Stream } from "openai/streaming.mjs";
 
-import { type Message } from "./types";
+import { type Message } from "@/components/retro-chat-gpt/types";
 
 interface StreamMessageParams {
   stream: Stream<ChatCompletionChunk>;
@@ -37,8 +37,4 @@ export function updateMessagesWithResponse(messages: Message[], content: string)
     newMessages.push({ role: "assistant", content });
   }
   return newMessages;
-}
-
-export function generateImageUrl(prompt: string) {
-  return `/placeholder.svg?height=200&width=200&text=${encodeURIComponent(prompt)}`;
 }
