@@ -1,8 +1,11 @@
+"use client";
+
 import { ImageIcon, MessageSquare } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { useFormStatus } from "react-dom";
 
 interface ChatInputProps {
   input: string;
@@ -25,6 +28,9 @@ export function ChatInput({
   onSend,
   onToggleMode,
 }: ChatInputProps) {
+  const { pending } = useFormStatus();
+  console.log("ttt", { pending });
+
   return (
     <div className="relative bg-gradient-to-r from-purple-900 to-indigo-900 p-2 sm:p-4 overflow-hidden">
       <div className="absolute inset-0 star-field"></div>
@@ -97,7 +103,7 @@ function InputSection({
   );
 
   return (
-    <div className="flex flex-col flex-grow items-end gap-2">
+    <form className="flex flex-col flex-grow items-end gap-2">
       <Textarea
         value={input}
         rows={3}
@@ -112,7 +118,7 @@ function InputSection({
         onClick={onSend}
         disabled={!input.trim()}
       />
-    </div>
+    </form>
   );
 }
 

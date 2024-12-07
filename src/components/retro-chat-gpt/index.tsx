@@ -1,22 +1,12 @@
 "use client";
 
-import OpenAI from "openai";
-import { useState, useRef, useEffect } from "react";
-
+import { useState, useRef } from "react";
 import { ChatHeader } from "@/components/retro-chat-gpt/chat-header";
 import { ChatInput } from "@/components/retro-chat-gpt/chat-input";
 import { MessageList } from "@/components/retro-chat-gpt/message-list";
 import { type Message } from "@/components/retro-chat-gpt/types";
-
-if (!process.env.NEXT_PUBLIC_HEURIST_API_KEY) {
-  throw new Error("Missing NEXT_PUBLIC_HEURIST_API_KEY environment variable");
-}
-
-export const openai = new OpenAI({
-  apiKey: process.env.NEXT_PUBLIC_HEURIST_API_KEY,
-  baseURL: "https://llm-gateway.heurist.xyz/v1",
-  dangerouslyAllowBrowser: true, // Required for client-side usage
-});
+import { streamChatCompletion } from "@/app/actions";
+import { handleStreamMessage, updateMessagesWithResponse, generateImageUrl } from "./utils";
 
 export function RetroChatGPT() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -25,101 +15,55 @@ export function RetroChatGPT() {
   const [credits, setCredits] = useState(99);
   const [isImageMode, setIsImageMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
   const isStreamingRef = useRef(false);
 
-  useEffect(() => {
-    return () => {
-      if (isStreamingRef.current) {
-        setIsLoading(false);
-        isStreamingRef.current = false;
-        if (abortControllerRef.current) {
-          abortControllerRef.current.abort();
-          abortControllerRef.current = null;
-        }
-      }
-    };
-  }, []);
-
   const handleSend = async () => {
-    if (!input.trim() || isLoading) {return;}
+    if (!input.trim() || isLoading) return;
 
     try {
       setIsLoading(true);
       isStreamingRef.current = true;
-      abortControllerRef.current = new AbortController();
 
-      const newMessage: Message = { role: "user", content: input };
+      const newMessage: Message = {
+        role: "user",
+        content: input,
+      };
       setMessages((prev) => [...prev, newMessage]);
       setInput("");
       setScore((prev) => prev + 1000);
 
-      const stream = await openai.chat.completions.create(
-        {
-          model: "theia-llama-3.1-8b",
-          messages: [...messages, newMessage].map((msg) => ({
-            role: msg.role,
-            content: msg.content,
-          })),
-          stream: true,
-          temperature: 0.7,
-          max_tokens: 1000,
-        },
-        {
-          signal: abortControllerRef.current.signal,
-        }
-      );
+      const result = await streamChatCompletion({
+        messages: [...messages, newMessage].map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+        })),
+      });
 
-      let currentContent = "";
+      if (!result.success) throw new Error(result.error);
+      if (!result.data) throw new Error("No stream returned");
 
-      for await (const chunk of stream) {
-        if (!isStreamingRef.current) {break;}
-
-        const content = chunk.choices[0]?.delta?.content || "";
-        if (content) {
-          currentContent += content;
-          await new Promise((resolve) => setTimeout(resolve, 50));
-
-          setMessages((prev) => {
-            const newMessages = [...prev];
-            if (prev[prev.length - 1]?.role === "assistant") {
-              newMessages[newMessages.length - 1] = {
-                role: "assistant",
-                content: currentContent,
-              };
-            } else {
-              newMessages.push({
-                role: "assistant",
-                content: currentContent,
-              });
-            }
-            return newMessages;
-          });
-        }
-      }
+      await handleStreamMessage({
+        stream: result.data,
+        isStreamingRef,
+        onProgress: (content) => setMessages((prev) => updateMessagesWithResponse(prev, content)),
+      });
     } catch (error) {
       console.error("Error in handleSend:", error);
       setMessages((prev) =>
         prev.map((msg, i) =>
           i === prev.length - 1
-            ? {
-                role: "assistant",
-                content: "Failed to generate response. Please try again.",
-              }
+            ? { role: "assistant", content: "Failed to generate response. Please try again." }
             : msg
         )
       );
     } finally {
       setIsLoading(false);
       isStreamingRef.current = false;
-      abortControllerRef.current = null;
     }
   };
 
   const handleImageGenerate = () => {
-    const generatedImageUrl = `/placeholder.svg?height=200&width=200&text=${encodeURIComponent(
-      input
-    )}`;
+    const generatedImageUrl = generateImageUrl(input);
     const newMessage: Message = {
       role: "assistant",
       content: `Here's a generated image based on: ${input}`,
@@ -139,7 +83,23 @@ export function RetroChatGPT() {
         await handleSend();
       }
     }
-    setCredits((prev) => prev - 1);
+  };
+
+  const handleSubmit = async () => {
+    if (!input.trim()) {
+      return;
+    }
+
+    try {
+      if (isImageMode) {
+        await handleImageGenerate();
+      } else {
+        await handleSend();
+      }
+      setCredits((prev) => prev - 1);
+    } catch (error) {
+      console.error("Error in handleSubmit:", error);
+    }
   };
 
   return (
@@ -156,7 +116,7 @@ export function RetroChatGPT() {
             isLoading={isLoading}
             onInputChange={setInput}
             onKeyDown={handleKeyDown}
-            onSend={isImageMode ? handleImageGenerate : handleSend}
+            onSend={handleSubmit}
             onToggleMode={() => setIsImageMode(!isImageMode)}
           />
         </div>
