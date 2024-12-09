@@ -1,6 +1,4 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+const nextConfig = {
   images: {
     remotePatterns: [
       {
@@ -10,8 +8,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  output: "standalone", // Ensures the build is optimized for deployment
-  trailingSlash: true,  // Ensures consistent URL paths with trailing slashes
+  trailingSlash: true,
 };
 
 export default nextConfig;
